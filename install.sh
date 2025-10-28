@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 echo "=== Parental Control Installer ==="
 
 # Check required commands
@@ -9,34 +7,21 @@ echo "[1/6] Checking system..."
 which opkg >/dev/null || { echo "ERROR: opkg not found"; exit 1; }
 which wget >/dev/null || { echo "ERROR: wget not found"; exit 1; }
 
-# Get architecture
-echo "[2/6] Detecting architecture..."
-ARCH=$(opkg print-architecture | awk '{print $2}' | head -1)
-echo "Architecture: $ARCH"
+# Get actual IPK filename from GitHub
+echo "[2/6] Finding latest IPK..."
+API_RESPONSE=$(wget -qO - https://api.github.com/repos/SaDLiF/parentcontrol_openwrt/releases/latest)
+DOWNLOAD_URL=$(echo "$API_RESPONSE" | grep "browser_download_url.*ipk" | head -1 | cut -d'"' -f4)
 
-# Hardcoded download URL for testing (замените на актуальную ссылку с вашего релиза)
-echo "[3/6] Getting download URL..."
-DOWNLOAD_URL="https://github.com/SaDLiF/parentcontrol_openwrt/releases/download/v1.0.0/parentcontrol_1.0.0-1_aarch64_cortex-a53.ipk"
-
-# If no specific URL, try to find latest
-if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "none" ]; then
-    echo "Trying to find latest release..."
-    # Простая попытка получить последний релиз
-    LATEST_URL=$(wget -qO - https://api.github.com/repos/SaDLiF/parentcontrol_openwrt/releases/latest | grep "browser_download_url.*ipk" | head -1 | cut -d'"' -f4)
-    if [ -n "$LATEST_URL" ]; then
-        DOWNLOAD_URL="$LATEST_URL"
-    else
-        echo "ERROR: Could not find download URL"
-        echo "Please download IPK manually from:"
-        echo "https://github.com/SaDLiF/parentcontrol_openwrt/releases"
-        exit 1
-    fi
+if [ -z "$DOWNLOAD_URL" ]; then
+    echo "ERROR: No IPK found in latest release"
+    echo "Available releases: https://github.com/SaDLiF/parentcontrol_openwrt/releases"
+    exit 1
 fi
 
 echo "Download URL: $DOWNLOAD_URL"
 
 # Download
-echo "[4/6] Downloading IPK..."
+echo "[3/6] Downloading IPK..."
 cd /tmp
 wget -O parentcontrol.ipk "$DOWNLOAD_URL" || {
     echo "ERROR: Download failed"
@@ -44,7 +29,7 @@ wget -O parentcontrol.ipk "$DOWNLOAD_URL" || {
 }
 
 # Install
-echo "[5/6] Installing..."
+echo "[4/6] Installing..."
 opkg install parentcontrol.ipk || {
     echo "ERROR: Installation failed"
     rm -f parentcontrol.ipk
@@ -55,7 +40,7 @@ opkg install parentcontrol.ipk || {
 rm -f parentcontrol.ipk
 
 # Start service
-echo "[6/6] Starting service..."
+echo "[5/6] Starting service..."
 if [ -f "/etc/init.d/parentalcontrol-watch" ]; then
     /etc/init.d/parentalcontrol-watch enable
     /etc/init.d/parentalcontrol-watch start
@@ -64,6 +49,6 @@ else
     echo "WARNING: Service file not found"
 fi
 
-echo "=== Installation completed! ==="
+echo "[6/6] Installation completed!"
 echo "Parental Control is now installed and running."
 echo "Access via LuCI web interface."
