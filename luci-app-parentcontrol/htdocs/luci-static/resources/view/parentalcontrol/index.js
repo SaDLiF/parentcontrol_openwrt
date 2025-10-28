@@ -20,61 +20,64 @@ return view.extend({
 
     render: (data) => {
         const hosts = data[1];
-
-        const m = new form.Map('parentalcontrol', 
+        const m = new form.Map('parentalcontrol',
             _('Parental Control %s').format(VERSION),
             _('Configure access rules by MAC/IP')
         );
 
+        // --- Debug флажок сверху ---
+        const configSection = m.section(form.NamedSection, 'config', 'parentalcontrol', _('Settings'));
+        configSection.anonymous = true;
+        const debugFlag = configSection.option(form.Flag, 'debug', _('Enable debug'));
+        debugFlag.default = '1';
+        debugFlag.rmempty = false;
+
+        // --- Основная таблица правил ---
         const s = m.section(form.GridSection, 'rule', _('Rules'));
         s.anonymous = true;
         s.addremove = true;
+        s.sortable = true;
 
-        // Name
+        // Название
         let o = s.option(form.Value, 'name', _('Name'));
         o.rmempty = false;
 
-        // Enabled flag with icon
-        o = s.option(form.Flag, 'enabled', _('Enabled'));
-        o.default = '1';
-        o.rmempty = false;
+        // Статус (включено/выключено)
+        o = s.option(form.DummyValue, 'enabled', _('Status'));
         o.cfgvalue = (section_id) => {
-            const val = form.Flag.prototype.cfgvalue(section_id, 'enabled');
-            if (val == '1') {
-                return '<i class="fa fa-check-circle" style="color:green"></i>';
-            }
-            return '<i class="fa fa-times-circle" style="color:red"></i>';
+            const val = uci.get('parentalcontrol', section_id, 'enabled');
+            return val === '1' ? '✅' : '❌';
         };
 
         // MAC
-        o = s.option(form.Value, 'mac', _('MAC Address'));
+        o = s.option(form.Value, 'mac', _('MAC'));
         o.datatype = 'macaddr';
         Object.keys(hosts).forEach(mac => {
             o.value(mac, '%s (%s)'.format(mac, hosts[mac].name || hosts[mac].ipv4 || ''));
         });
 
         // IP
-        o = s.option(form.Value, 'ip', _('IP Address'));
+        o = s.option(form.Value, 'ip', _('IP'));
         o.datatype = 'ipaddr';
         Object.keys(hosts).forEach(mac => {
             if (hosts[mac].ipv4)
                 o.value(hosts[mac].ipv4, '%s (%s)'.format(hosts[mac].ipv4, hosts[mac].name || mac));
         });
 
-        // Weekdays
-        o = s.option(form.MultiValue, 'days', _('Weekdays'));
-        ['mon','tue','wed','thu','fri','sat','sun'].forEach(d => o.value(d, _(d)));
+        // Дни недели
+        o = s.option(form.MultiValue, 'days', _('Days'));
+        ['mon','tue','wed','thu','fri','sat','sun'].forEach(day => o.value(day, _(day.toUpperCase())));
         o.default = 'mon tue wed thu fri';
         o.rmempty = false;
 
-        // Time start
+        // Время начала
         o = s.option(form.Value, 'start', _('Start'));
         o.datatype = 'time';
         o.placeholder = 'HH:MM';
         o.default = '21:00';
         o.rmempty = false;
 
-        // Time end
+        // Время окончания
         o = s.option(form.Value, 'end', _('End'));
         o.datatype = 'time';
         o.placeholder = 'HH:MM';
