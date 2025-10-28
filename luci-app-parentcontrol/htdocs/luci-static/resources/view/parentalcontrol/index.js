@@ -22,7 +22,7 @@ return view.extend({
     render: (data) => {
         const hosts = data[1];
         const m = new form.Map('parentalcontrol', 
-            _('Родительский контроль v%s').format(VERSION),  // Добавьте версию в заголовок
+            _('Родительский контроль %s').format(VERSION),  // Добавьте версию в заголовок
             _('Настройка правил доступа по MAC/IP')
         );
 
