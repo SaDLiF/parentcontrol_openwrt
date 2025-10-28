@@ -1,34 +1,79 @@
-name: Build for Xiaomi AX3000T
-
+name: Build Parental Control
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  preparation:
+    name: Setup build version
     runs-on: ubuntu-latest
-    permissions:
-      contents: write  # ←--- ДОБАВЬТЕ ЭТО!
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+      - id: version
+        run: |
+          VERSION=$(git describe --tags --exact-match 2>/dev/null || echo "0.$(date +%d%m%Y)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build parentcontrol package
+    runs-on: ubuntu-latest
+    needs: preparation
     
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      
-    - name: Build IPK
-      run: |
-        wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
-        tar xf openwrt-sdk-*.tar.xz
-        cd openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64
-        
-        mkdir -p package/parentcontrol
-        cp -r ../Makefile ../files package/parentcontrol/
-        
-        make defconfig
-        make package/parentcontrol/compile
-        
-        cp bin/packages/aarch64_cortex-a53/base/parentcontrol*.ipk ../
-        
-    - name: Upload to release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: parentcontrol*.ipk
+      - uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Build IPK using Docker
+        uses: docker/build-push-action@v6.18.0
+        with:
+          file: ./Dockerfile-ipk
+          context: .
+          tags: parentcontrol:ci-ipk
+          build-args: |
+            PARENTCONTROL_VERSION=${{ needs.preparation.outputs.version }}
+
+      - name: Create IPK Docker container
+        run: docker create --name ipk-container parentcontrol:ci-ipk
+
+      - name: Copy IPK files from container
+        run: |
+          mkdir -p ./bin/ipk
+          docker cp ipk-container:/builder/bin/packages/ ./bin/ipk/
+
+      - name: Remove Docker container
+        run: docker rm ipk-container
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: parentcontrol-${{ github.ref_name }}
+          path: ./bin/ipk/packages/*/base/parentcontrol*.ipk
+          retention-days: 1
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release-artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2.4.0
+        with:
+          files: ./release-artifacts/**/*.ipk
+          draft: false
+          prerelease: false
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}

@@ -1,0 +1,12 @@
+FROM itdoginfo/openwrt-sdk-ipk:24.10.3
+
+ARG PARENTCONTROL_VERSION
+
+# Копируем ваши файлы в правильные пути SDK
+COPY ./files /builder/package/feeds/utilities/parentcontrol/files
+COPY ./Makefile /builder/package/feeds/utilities/parentcontrol/Makefile
+
+# Собираем пакет
+RUN export PARENTCONTROL_VERSION="v${PARENTCONTROL_VERSION}" && \
+    make defconfig && \
+    make package/parentcontrol/compile V=s -j4
