@@ -3,9 +3,13 @@ FROM itdoginfo/openwrt-sdk-ipk:24.10.3
 # Копируем ВСЮ структуру проекта
 COPY . /builder/
 
-# Подготавливаем файлы для пакета
-RUN mkdir -p /builder/package/parentcontrol/files && \
-    cp -r /builder/etc /builder/usr /builder/package/parentcontrol/files/
+# Создаем структуру пакета
+RUN mkdir -p /builder/package/parentcontrol && \
+    # Создаем символическую ссылку на Makefile
+    ln -sf /builder/Makefile /builder/package/parentcontrol/Makefile && \
+    # Копируем файлы
+    mkdir -p /builder/package/parentcontrol/files && \
+    cp -r /builder/files/* /builder/package/parentcontrol/files/
 
 # Собираем
 RUN make defconfig && \
