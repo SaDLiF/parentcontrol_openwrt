@@ -1,8 +1,21 @@
 FROM itdoginfo/openwrt-sdk-ipk:24.10.3
 
-# Копируем файлы пакета
-COPY . /builder/package/parentcontrol/
+# Создаем правильную структуру
+RUN mkdir -p /builder/package/feeds/utilities/parentcontrol
 
-# Собираем
+# Копируем ВСЕ файлы из текущего каталога
+COPY . /builder/package/feeds/utilities/parentcontrol/
+
+# Проверяем что файлы на месте
+RUN echo "=== Files in package directory ===" && \
+    find /builder/package/feeds/utilities/parentcontrol -name "*.sh" -o -name "*.json" -o -name "*.js" -o -name "Makefile" | while read f; do \
+        echo "File: $f ($(wc -c < "$f") bytes)"; \
+    done
+
+# Собираем пакет
 RUN make defconfig && \
-    make package/parentcontrol/compile V=s
+    make package/feeds/utilities/parentcontrol/compile V=s
+
+# Проверяем результат
+RUN echo "=== Built IPK contents ===" && \
+    find /builder/bin -name "parentcontrol*.ipk" -exec sh -c 'echo "IPK: {}"; ar t {}' \;
