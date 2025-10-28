@@ -22,12 +22,12 @@ jobs:
       - name: Create Docker container
         run: docker create --name ipk-builder parentcontrol-builder
           
-      - name: Copy IPK files
+            - name: Copy IPK files
         run: |
           mkdir -p ./bin/ipk
           docker cp ipk-builder:/builder/bin/packages/x86_64/luci/. ./bin/ipk/
           
-      - name: Fix naming
+      - name: Fix naming (как у podkop)
         run: |
           for f in ./bin/ipk/*.ipk; do
             [ -e "$f" ] || continue
