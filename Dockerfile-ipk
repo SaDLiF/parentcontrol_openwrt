@@ -1,28 +1,8 @@
 FROM itdoginfo/openwrt-sdk-ipk:24.10.3
 
-# Создаем структуру пакета
-RUN mkdir -p /builder/package/feeds/utilities/parentcontrol
+# Просто копируем в корень package
+COPY . /builder/package/parentcontrol/
 
-# Копируем ВСЕ файлы
-COPY . /builder/package/feeds/utilities/parentcontrol/
-
-# Проверяем что файлы на месте
-RUN echo "=== Files in package ===" && \
-    find /builder/package/feeds/utilities/parentcontrol/files -type f | while read f; do \
-        echo "File: $f ($(wc -c < "$f") bytes)"; \
-    done
-
-# Исправляем Makefile - заменяем ./files/* на абсолютный путь
-RUN sed -i 's|\./files/\*|/builder/package/feeds/utilities/parentcontrol/files/\*|g' /builder/package/feeds/utilities/parentcontrol/Makefile
-
-# Проверяем исправленный Makefile
-RUN echo "=== Makefile install section ===" && \
-    grep -A 10 "define Package/parentcontrol/install" /builder/package/feeds/utilities/parentcontrol/Makefile
-
-# Собираем пакет
+# Собираем
 RUN make defconfig && \
-    make package/feeds/utilities/parentcontrol/compile V=s
-
-# Проверяем результат
-RUN echo "=== Built IPK ===" && \
-    find /builder/bin -name "parentcontrol*.ipk" -exec ls -la {} \;
+    make package/parentcontrol/compile V=s
