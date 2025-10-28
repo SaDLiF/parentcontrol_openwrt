@@ -77,10 +77,24 @@ jobs:
           tar -xzf ./bin/ipk/luci-app-parentcontrol-*.ipk -C ./ipk-analysis/
           echo "=== Contents of extracted IPK ==="
           ls -la ./ipk-analysis/
-          echo "=== Data.tar.gz contents ==="
-          tar -tzf ./ipk-analysis/data.tar.gz 2>/dev/null || echo "data.tar.gz is empty or corrupted"
-          echo "=== Control.tar.gz contents ==="
-          tar -tzf ./ipk-analysis/control.tar.gz 2>/dev/null || echo "control.tar.gz is empty or corrupted"
+
+      - name: Check file sizes and content in IPK
+        run: |
+          echo "=== File sizes in data.tar.gz ==="
+          mkdir -p ./extracted-data
+          tar -xzf ./ipk-analysis/data.tar.gz -C ./extracted-data/
+          find ./extracted-data/ -type f -exec echo "{} - $(wc -c < {} 2>/dev/null || echo 0) bytes" \;
+          echo "=== Checking file content ==="
+          echo "=== index.js content ==="
+          find ./extracted-data/ -name "index.js" -exec cat {} \; || echo "index.js not found"
+          echo "=== parentalcontrol config content ==="
+          find ./extracted-data/ -name "parentalcontrol" -exec cat {} \; || echo "parentalcontrol config not found"
+          echo "=== parentalcontrol-watch content ==="
+          find ./extracted-data/ -name "parentalcontrol-watch" -exec cat {} \; || echo "parentalcontrol-watch not found"
+          echo "=== parentalcontrol-apply content ==="
+          find ./extracted-data/ -name "parentalcontrol-apply" -exec cat {} \; || echo "parentalcontrol-apply not found"
+          echo "=== JSON files content ==="
+          find ./extracted-data/ -name "*.json" -exec echo "=== {} ===" \; -exec cat {} \; -exec echo "" \;
 
       - name: Filter files
         run: |

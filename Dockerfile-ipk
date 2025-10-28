@@ -6,16 +6,20 @@ ENV PARENTCONTROL_VERSION=${PARENTCONTROL_VERSION}
 COPY . /builder/
 COPY ./luci-app-parentcontrol /builder/package/feeds/luci/luci-app-parentcontrol
 
-RUN echo "=== DETAILED FILE CHECK ===" && \
-    echo "=== htdocs contents ===" && \
-    find /builder/package/feeds/luci/luci-app-parentcontrol/htdocs/ -type f -exec echo "FILE: {} - Size: $(stat -c%s {} 2>/dev/null || echo 0) bytes" \; && \
-    echo "=== root contents ===" && \
-    find /builder/package/feeds/luci/luci-app-parentcontrol/root/ -type f -exec echo "FILE: {} - Size: $(stat -c%s {} 2>/dev/null || echo 0) bytes" \; && \
-    echo "=== Makefile content ===" && \
-    cat /builder/package/feeds/luci/luci-app-parentcontrol/Makefile | grep -A 10 "define Package"
+RUN echo "=== CHECKING SOURCE FILE CONTENT ===" && \
+    echo "=== Source file sizes ===" && \
+    find /builder/package/feeds/luci/luci-app-parentcontrol/ -type f -exec echo "{} - $(wc -c < {} 2>/dev/null || echo 0) bytes" \; && \
+    echo "=== index.js content (first 20 lines) ===" && \
+    cat /builder/package/feeds/luci/luci-app-parentcontrol/htdocs/luci-static/resources/view/parentalcontrol/index.js | head -20 && \
+    echo "=== parentalcontrol config content ===" && \
+    cat /builder/package/feeds/luci/luci-app-parentcontrol/root/etc/config/parentalcontrol && \
+    echo "=== parentalcontrol-watch content ===" && \
+    cat /builder/package/feeds/luci/luci-app-parentcontrol/root/etc/init.d/parentalcontrol-watch && \
+    echo "=== parentalcontrol-apply content ===" && \
+    cat /builder/package/feeds/luci/luci-app-parentcontrol/root/usr/bin/parentalcontrol-apply
 
 RUN make defconfig && \
     make package/luci-app-parentcontrol/compile V=s
 
-RUN echo "=== Build logs for our package ===" && \
-    find /builder/build_dir/ -name "*luci-app-parentcontrol*" -type f -name "*.log" | head -3 | xargs cat 2>/dev/null || echo "No build logs found"
+RUN echo "=== Build result ===" && \
+    find /builder/bin/packages/ -name "*parentcontrol*" -type f
