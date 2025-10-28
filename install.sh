@@ -29,6 +29,8 @@ detect_arch() {
     if command -v opkg >/dev/null 2>&1; then
         arch=$(opkg print-architecture | awk '{print $2}' | head -1)
     fi
+
+    echo "$arch"
     
     # If not found, use uname
     if [ -z "$arch" ]; then
@@ -51,9 +53,7 @@ detect_arch() {
                 arch="unknown"
                 ;;
         esac
-    fi
-    
-    echo "$arch"
+    fi    
 }
 
 # Get latest release info
