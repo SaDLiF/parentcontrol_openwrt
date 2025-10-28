@@ -6,17 +6,18 @@ ENV PARENTCONTROL_VERSION=${PARENTCONTROL_VERSION}
 COPY . /builder/
 COPY ./luci-app-parentcontrol /builder/package/feeds/luci/luci-app-parentcontrol
 
-# Проверяем структуру ДО сборки
-RUN echo "=== Package structure before build ===" && \
-    find /builder/package/feeds/luci/luci-app-parentcontrol/ -type f && \
-    echo "=== Files count ===" && \
-    find /builder/package/feeds/luci/luci-app-parentcontrol/ -type f | wc -l
+RUN echo "=== BUILD STARTED ===" && \
+    echo "Version: $PARENTCONTROL_VERSION" && \
+    echo "=== PACKAGE STRUCTURE ===" && \
+    find /builder/package/feeds/luci/luci-app-parentcontrol/ -type f
 
-# Собираем
-RUN make defconfig && \
+RUN make defconfig
+
+RUN echo "=== COMPILING PACKAGE ===" && \
     make package/luci-app-parentcontrol/compile V=s
 
-# Проверяем что попало в IPK
-RUN echo "=== Checking IPK content ===" && \
-    find /builder/bin/packages/ -name "*.ipk" -exec ls -la {} \; && \
-    find /builder/bin/packages/ -name "*.ipk" -exec echo "=== Content of {} ===" \; -exec tar -tzf {} 2>/dev/null \; || echo "Cannot list IPK content"
+RUN echo "=== BUILD FINISHED ===" && \
+    echo "=== FINDING OUR PACKAGE ===" && \
+    find /builder/bin/packages/ -name "*parentcontrol*" -type f && \
+    echo "=== ALL IPK FILES ===" && \
+    find /builder/bin/packages/ -name "*.ipk" -type f | head -20

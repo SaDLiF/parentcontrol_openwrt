@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
       - id: version
         run: |
-          VERSION=$(git describe --tags --exact-match 2>/dev/null | sed 's/^v//' || echo "0.$(date +%d%m%Y)")
+          VERSION=$(git describe --tags --exact-match 2>/dev/null || echo "0.$(date +%d%m%Y)")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   build:
@@ -29,20 +29,43 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Build IPK
-        run: |
-          docker build -f Dockerfile-ipk -t parentcontrol-builder \
-            --build-arg PARENTCONTROL_VERSION=${{ needs.preparation.outputs.version }} .
-          
+        uses: docker/build-push-action@v6.18.0
+        with:
+          file: ./Dockerfile-ipk
+          context: .
+          tags: parentcontrol:ci-ipk
+          build-args: |
+            PARENTCONTROL_VERSION=${{ needs.preparation.outputs.version }}
+          push: false
+
       - name: Create Docker container
-        run: docker create --name ipk-builder parentcontrol-builder
-          
-      - name: Copy IPK files
+        run: docker create --name ipk-builder parentcontrol:ci-ipk
+
+      - name: Show build logs and structure
+        run: |
+          echo "=== BUILD LOGS ==="
+          docker logs ipk-builder
+          echo "=== PACKAGE STRUCTURE IN CONTAINER ==="
+          docker exec ipk-builder find /builder/package/feeds/luci/luci-app-parentcontrol/ -type f
+          echo "=== ALL IPK FILES ==="
+          docker exec ipk-builder find /builder/bin/packages/ -name "*.ipk" -type f
+          echo "=== LUCi DIRECTORY ==="
+          docker exec ipk-builder ls -la /builder/bin/packages/x86_64/luci/ 2>/dev/null || echo "No luci directory"
+          echo "=== PACKAGES DIRECTORY ==="
+          docker exec ipk-builder ls -la /builder/bin/packages/x86_64/packages/ 2>/dev/null || echo "No packages directory"
+
+      - name: Copy files from Docker container
         run: |
           mkdir -p ./bin/ipk
-          docker cp ipk-builder:/builder/bin/packages/x86_64/luci/. ./bin/ipk/
-          
+          echo "=== Copying from luci ==="
+          docker cp ipk-builder:/builder/bin/packages/x86_64/luci/. ./bin/ipk/ 2>/dev/null || echo "Failed to copy from luci"
+          echo "=== Copying from packages ==="
+          docker cp ipk-builder:/builder/bin/packages/x86_64/packages/. ./bin/ipk/ 2>/dev/null || echo "Failed to copy from packages"
+          echo "=== Copied files ==="
+          ls -la ./bin/ipk/ || echo "No files copied"
+
       - name: Fix naming
         run: |
           for f in ./bin/ipk/*.ipk; do
@@ -50,12 +73,23 @@ jobs:
             base=$(basename "$f")
             newname=$(echo "$base" | sed 's/_/-/g')
             mv "$f" "./bin/ipk/$newname"
+            echo "Renamed: $base -> $newname"
           done
-          
+
+      - name: Filter files
+        run: |
+          VERSION="${{ needs.preparation.outputs.version }}"
+          mkdir -p ./filtered-bin/ipk
+          echo "=== Files before filtering ==="
+          ls -la ./bin/ipk/ || echo "No files to filter"
+          cp ./bin/ipk/luci-app-parentcontrol-*.ipk ./filtered-bin/ipk/ 2>/dev/null || echo "No parentcontrol files found"
+          echo "=== Files after filtering ==="
+          ls -la ./filtered-bin/ipk/ || echo "No filtered files"
+
       - name: Remove Docker container
         run: docker rm ipk-builder
-          
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: bin/ipk/luci-app-parentcontrol*.ipk
+          files: filtered-bin/ipk/*.ipk
