@@ -1,16 +1,27 @@
 FROM itdoginfo/openwrt-sdk-ipk:24.10.3
 
-# Копируем проект
+# Копируем ВСЮ структуру проекта
 COPY . /builder/
 
-# Создаем структуру вручную
+# Детальная проверка что есть в files/
+RUN echo "=== REAL content of files/ ===" && \
+    find /builder/files/ -type f && \
+    echo "=== List ALL files recursively ===" && \
+    find /builder/files/ -type f -exec echo "FILE: {}" \; && \
+    echo "=== Total files found: ===" && \
+    find /builder/files/ -type f | wc -l
+
+# Создаем структуру пакета
 RUN mkdir -p /builder/package/parentcontrol && \
     cp /builder/Makefile /builder/package/parentcontrol/ && \
-    mkdir -p /builder/package/parentcontrol/files && \
-    cp -r /builder/files/* /builder/package/parentcontrol/files/ 2>/dev/null || true
+    mkdir -p /builder/package/parentcontrol/files
 
-# Проверяем
-RUN find /builder/package/parentcontrol/ -type f | head -10
+# Копируем ВСЕ файлы которые есть
+RUN echo "=== Copying existing files ===" && \
+    cp -r /builder/files/. /builder/package/parentcontrol/files/ && \
+    echo "=== Copied files ===" && \
+    find /builder/package/parentcontrol/files/ -type f | head -20
 
-# Собираем
-RUN make defconfig && make package/parentcontrol/compile V=s
+# Собираем пакет
+RUN make defconfig && \
+    make package/parentcontrol/compile V=s
