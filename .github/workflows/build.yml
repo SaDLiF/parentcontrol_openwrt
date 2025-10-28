@@ -9,37 +9,37 @@ permissions:
 
 jobs:
   build:
-    name: Build with Docker
+    name: Build IPK package
     runs-on: ubuntu-latest
     
     steps:
       - uses: actions/checkout@v4
       
-      - name: Debug - Show project structure
+      - name: Build IPK
         run: |
-          echo "=== Project Structure ==="
-          find . -type f -name "*.sh" -o -name "*.lua" -o -name "config" | head -20
-          echo "=== Directories ==="
-          ls -la
-          echo "=== package/ contents ==="
-          ls -la package/ || echo "No package directory"
-          echo "=== parentcontrol/ contents ==="
-          ls -la package/parentcontrol/ || echo "No parentcontrol directory"
-          
-      - name: Build with Docker and extract IPK
-        run: |
-          # Собираем в Docker
           docker build -f Dockerfile-ipk -t parentcontrol-builder .
           
-          # Создаем контейнер и копируем ТОЛЬКО IPK
-          docker create --name builder parentcontrol-builder
-          docker cp builder:/builder/bin/packages/ ./ipk-files/
-          docker rm builder
+      - name: Create Docker container
+        run: docker create --name ipk-builder parentcontrol-builder
           
-          echo "=== IPK Files ==="
-          find ./ipk-files -name "parentcontrol*.ipk" -exec cp {} . \; -exec ls -la {} \;
+      - name: Copy IPK files
+        run: |
+          mkdir -p ./bin/ipk
+          docker cp ipk-builder:/builder/bin/packages/x86_64/luci/. ./bin/ipk/
+          
+      - name: Fix naming
+        run: |
+          for f in ./bin/ipk/*.ipk; do
+            [ -e "$f" ] || continue
+            base=$(basename "$f")
+            newname=$(echo "$base" | sed 's/_/-/g')
+            mv "$f" "./bin/ipk/$newname"
+          done
+          
+      - name: Remove Docker container
+        run: docker rm ipk-builder
           
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: parentcontrol*.ipk
+          files: bin/ipk/luci-app-parentcontrol*.ipk

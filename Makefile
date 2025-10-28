@@ -1,10 +1,11 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=parentcontrol
+PKG_NAME:=luci-app-parentcontrol
+
 PKG_VERSION:=1.0.0
 PKG_RELEASE:=2
 
-LUCI_TITLE:=Parental Control
+LUCI_TITLE:=LuCI Parental Control App
 LUCI_DEPENDS:=+luci-base
 LUCI_PKGARCH:=all
 LUCI_LANG.ru:=Русский (Russian)
