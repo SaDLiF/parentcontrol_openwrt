@@ -8,10 +8,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Base URL for GitHub repository
-REPO_URL="https://github.com/SaDLiF/parentcontrol_openwrt"
-API_URL="https://api.github.com/repos/SaDLiF/parentcontrol_openwrt/releases/latest"
-
 # Function to print colored output
 print_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -28,8 +24,13 @@ print_error() {
 # Detect architecture
 detect_arch() {
     local arch
-    arch=$(opkg print-architecture | awk '{print $2}' | head -1)
     
+    # First try opkg
+    if command -v opkg >/dev/null 2>&1; then
+        arch=$(opkg print-architecture | awk '{print $2}' | head -1)
+    fi
+    
+    # If not found, use uname
     if [ -z "$arch" ]; then
         arch=$(uname -m)
         case "$arch" in
@@ -42,12 +43,12 @@ detect_arch() {
             armv7l)
                 arch="arm_cortex-a7_neon-vfpv4"
                 ;;
-            mips)
+            mips|mipsel)
                 arch="mipsel_24kc"
                 ;;
             *)
-                print_error "Unsupported architecture: $arch"
-                exit 1
+                print_warn "Unknown architecture: $arch, using generic"
+                arch="unknown"
                 ;;
         esac
     fi
@@ -60,11 +61,11 @@ get_latest_release() {
     print_info "Fetching latest release information..."
     
     # Try to get release info from GitHub API
-    response=$(curl -s "$API_URL")
+    response=$(curl -s "https://api.github.com/repos/SaDLiF/parentcontrol_openwrt/releases/latest" || wget -qO - "https://api.github.com/repos/SaDLiF/parentcontrol_openwrt/releases/latest")
     
     if [ $? -ne 0 ] || [ -z "$response" ]; then
         print_error "Failed to fetch release information"
-        exit 1
+        return 1
     fi
     
     # Extract download URL for IPK file
@@ -72,7 +73,7 @@ get_latest_release() {
     
     if [ -z "$download_url" ]; then
         print_error "No IPK file found in latest release"
-        exit 1
+        return 1
     fi
     
     echo "$download_url"
@@ -84,17 +85,13 @@ download_and_install() {
     local ipk_name="parentcontrol_latest.ipk"
     
     print_info "Downloading latest IPK package..."
-    wget -O "/tmp/$ipk_name" "$download_url"
-    
-    if [ $? -ne 0 ]; then
+    if ! wget -O "/tmp/$ipk_name" "$download_url"; then
         print_error "Failed to download IPK package"
-        exit 1
+        return 1
     fi
     
     print_info "Installing package..."
-    opkg install "/tmp/$ipk_name"
-    
-    if [ $? -eq 0 ]; then
+    if opkg install "/tmp/$ipk_name"; then
         print_info "Installation completed successfully!"
         
         # Cleanup
@@ -105,6 +102,9 @@ download_and_install() {
             print_info "Starting parentalcontrol service..."
             /etc/init.d/parentalcontrol-watch enable
             /etc/init.d/parentalcontrol-watch start
+            print_info "Service started successfully!"
+        else
+            print_warn "Service file not found, manual start may be required"
         fi
         
         print_info "Parental Control has been installed and started!"
@@ -113,7 +113,7 @@ download_and_install() {
     else
         print_error "Installation failed"
         rm -f "/tmp/$ipk_name"
-        exit 1
+        return 1
     fi
 }
 
@@ -121,14 +121,8 @@ download_and_install() {
 main() {
     print_info "Starting Parental Control installation..."
     
-    # Check if we're on OpenWRT
-    if [ ! -f "/etc/openwrt_release" ]; then
-        print_error "This script must be run on an OpenWRT system"
-        exit 1
-    fi
-    
     # Check for required commands
-    for cmd in opkg wget curl; do
+    for cmd in opkg wget; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             print_error "Required command '$cmd' not found"
             exit 1
@@ -138,7 +132,7 @@ main() {
     # Get download URL
     download_url=$(get_latest_release)
     
-    if [ -n "$download_url" ]; then
+    if [ -n "$download_url" ] && [ "$download_url" != "1" ]; then
         print_info "Found IPK: $download_url"
         download_and_install "$download_url"
     else
@@ -147,27 +141,5 @@ main() {
     fi
 }
 
-# Handle script arguments
-case "${1:-}" in
-    -h|--help)
-        echo "Parental Control Installer"
-        echo "Usage: $0 [options]"
-        echo ""
-        echo "Options:"
-        echo "  -h, --help    Show this help message"
-        echo "  -v, --version Show version information"
-        echo ""
-        echo "This script will automatically:"
-        echo "1. Detect your device architecture"
-        echo "2. Download the latest IPK from GitHub releases"
-        echo "3. Install and configure Parental Control"
-        exit 0
-        ;;
-    -v|--version)
-        echo "Parental Control Installer v1.0"
-        exit 0
-        ;;
-    *)
-        main
-        ;;
-esac
+# Run main function
+main "$@"
