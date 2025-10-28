@@ -1,18 +1,22 @@
 FROM itdoginfo/openwrt-sdk-ipk:24.10.3
 
+ARG PARENTCONTROL_VERSION
+ENV PARENTCONTROL_VERSION=${PARENTCONTROL_VERSION}
+
 COPY . /builder/
-
-# Проверяем что файлы скопировались
-RUN echo "=== Checking package structure ===" && \
-    find /builder/luci-app-parentcontrol/ -type f && \
-    echo "=== Files count: ===" && \
-    find /builder/luci-app-parentcontrol/files/ -type f | wc -l
-
 COPY ./luci-app-parentcontrol /builder/package/feeds/luci/luci-app-parentcontrol
 
-# Проверяем после копирования
-RUN echo "=== After copy to feeds ===" && \
-    find /builder/package/feeds/luci/luci-app-parentcontrol/ -type f
+# Проверяем структуру ДО сборки
+RUN echo "=== Package structure before build ===" && \
+    find /builder/package/feeds/luci/luci-app-parentcontrol/ -type f && \
+    echo "=== Files count ===" && \
+    find /builder/package/feeds/luci/luci-app-parentcontrol/ -type f | wc -l
 
+# Собираем
 RUN make defconfig && \
     make package/luci-app-parentcontrol/compile V=s
+
+# Проверяем что попало в IPK
+RUN echo "=== Checking IPK content ===" && \
+    find /builder/bin/packages/ -name "*.ipk" -exec ls -la {} \; && \
+    find /builder/bin/packages/ -name "*.ipk" -exec echo "=== Content of {} ===" \; -exec tar -tzf {} 2>/dev/null \; || echo "Cannot list IPK content"
