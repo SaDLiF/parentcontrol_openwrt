@@ -207,7 +207,6 @@ rm -f /tmp/*.ipk 2>/dev/null
 
 # --- 4. Set permissions ---
 echo "[5/12] Setting file permissions..."
-[ -f "/usr/sbin/parentalcontrol" ] && chmod 755 /usr/sbin/parentalcontrol && echo "✓ /usr/sbin/parentalcontrol"
 [ -f "/usr/bin/parentalcontrol-apply" ] && chmod 755 /usr/bin/parentalcontrol-apply && echo "✓ /usr/bin/parentalcontrol-apply"
 [ -f "/etc/init.d/parentalcontrol-watch" ] && chmod 755 /etc/init.d/parentalcontrol-watch && echo "✓ /etc/init.d/parentalcontrol-watch"
 [ -f "/etc/config/parentalcontrol" ] && chmod 644 /etc/config/parentalcontrol && echo "✓ /etc/config/parentalcontrol"
@@ -240,15 +239,7 @@ if [ -x "/etc/init.d/rpcd" ]; then
     /etc/init.d/rpcd restart 2>/dev/null && echo "✓ rpcd restarted" || echo "⚠ rpcd restart failed"
 fi
 
-# --- 8. Optional: check installed package existence ---
-echo "[9/12] Verifying installation..."
-if [ -f "/usr/bin/parentalcontrol-apply" ] || [ -f "/usr/sbin/parentalcontrol" ]; then
-    echo "✓ Files present"
-else
-    echo "⚠ Warning: expected binaries not found. The package might have installed to different paths."
-fi
-
-# --- 9. Show access hint ---
+# --- 8. Show access hint ---
 echo ""
 echo "🎉 Installation completed (if no errors above)."
 echo "Parental Control is now installed (or attempted)."
