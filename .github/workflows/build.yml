@@ -1,0 +1,32 @@
+name: Build for Xiaomi AX3000T
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Build IPK
+      run: |
+        wget https://downloads.openwrt.org/releases/24.10.3/targets/mediatek/filogic/openwrt-sdk-24.10.3-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.xz
+        tar xf openwrt-sdk-*.tar.xz
+        cd openwrt-sdk-24.10.3-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64
+        
+        mkdir -p package/parentcontrol
+        cp -r ../Makefile ../files package/parentcontrol/
+        
+        make defconfig
+        make package/parentcontrol/compile
+        
+        cp bin/packages/aarch64_cortex-a53/base/parentcontrol*.ipk ../
+        
+    - name: Upload to release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: parentcontrol*.ipk
