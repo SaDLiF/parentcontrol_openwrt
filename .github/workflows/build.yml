@@ -43,7 +43,7 @@ jobs:
       - name: Create Docker container
         run: docker create --name ipk-builder parentcontrol:ci-ipk
 
-      - name: Copy files directly (без запуска контейнера)
+      - name: Copy files directly
         run: |
           mkdir -p ./bin/ipk
           echo "=== Copying from luci ==="
@@ -67,6 +67,15 @@ jobs:
             mv "$f" "./bin/ipk/$newname"
             echo "Renamed: $base -> $newname"
           done
+
+      - name: Analyze IPK content
+        run: |
+          echo "=== Analyzing luci-app-parentcontrol IPK ==="
+          tar -tzf ./bin/ipk/luci-app-parentcontrol-*.ipk
+          echo "=== File size breakdown ==="
+          tar -xzf ./bin/ipk/luci-app-parentcontrol-*.ipk --to-stdout data.tar.gz | tar -tzv | head -20
+          echo "=== Control files ==="
+          tar -xzf ./bin/ipk/luci-app-parentcontrol-*.ipk --to-stdout control.tar.gz | tar -tzv
 
       - name: Filter files
         run: |
