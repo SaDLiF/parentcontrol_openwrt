@@ -1,21 +1,34 @@
-name: Debug Structure
-on: [workflow_dispatch]
+name: Build Parental Control
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  debug:
+  build:
+    name: Build with Docker
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
       
-      - name: Check structure
+      - name: Build with Docker and extract IPK
         run: |
-          docker run -it --rm -v $(pwd):/source itdoginfo/openwrt-sdk-ipk:24.10.3 bash -c "
-            echo '=== SDK structure ==='
-            ls -la /builder/package/
-            echo '=== Copying files ==='
-            cp -r /source /builder/package/parentcontrol
-            echo '=== Copied structure ==='
-            find /builder/package/parentcontrol -type f
-            echo '=== Available packages ==='
-            find /builder/package -name 'Makefile' | head -10
-          "
+          # Собираем в Docker
+          docker build -f Dockerfile-ipk -t parentcontrol-builder .
+          
+          # Создаем контейнер и копируем ТОЛЬКО IPK
+          docker create --name builder parentcontrol-builder
+          docker cp builder:/builder/bin/packages/ ./ipk-files/
+          docker rm builder
+          
+          echo "=== IPK Files ==="
+          find ./ipk-files -name "parentcontrol*.ipk" -exec cp {} . \; -exec ls -la {} \;
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: parentcontrol*.ipk
