@@ -40,31 +40,24 @@ jobs:
             PARENTCONTROL_VERSION=${{ needs.preparation.outputs.version }}
           push: false
 
-      - name: Create Docker container
-        run: docker create --name ipk-builder parentcontrol:ci-ipk
-
-      - name: Show build logs and structure
+      - name: Create and check Docker container
         run: |
-          echo "=== BUILD LOGS ==="
-          docker logs ipk-builder
+          docker create --name ipk-builder parentcontrol:ci-ipk
           echo "=== PACKAGE STRUCTURE IN CONTAINER ==="
+          docker start ipk-builder
           docker exec ipk-builder find /builder/package/feeds/luci/luci-app-parentcontrol/ -type f
           echo "=== ALL IPK FILES ==="
-          docker exec ipk-builder find /builder/bin/packages/ -name "*.ipk" -type f
+          docker exec ipk-builder find /builder/bin/packages/ -name "*.ipk" -type f | grep parentcontrol
           echo "=== LUCi DIRECTORY ==="
-          docker exec ipk-builder ls -la /builder/bin/packages/x86_64/luci/ 2>/dev/null || echo "No luci directory"
-          echo "=== PACKAGES DIRECTORY ==="
-          docker exec ipk-builder ls -la /builder/bin/packages/x86_64/packages/ 2>/dev/null || echo "No packages directory"
+          docker exec ipk-builder ls -la /builder/bin/packages/x86_64/luci/ | grep parentcontrol
 
       - name: Copy files from Docker container
         run: |
           mkdir -p ./bin/ipk
           echo "=== Copying from luci ==="
-          docker cp ipk-builder:/builder/bin/packages/x86_64/luci/. ./bin/ipk/ 2>/dev/null || echo "Failed to copy from luci"
-          echo "=== Copying from packages ==="
-          docker cp ipk-builder:/builder/bin/packages/x86_64/packages/. ./bin/ipk/ 2>/dev/null || echo "Failed to copy from packages"
+          docker cp ipk-builder:/builder/bin/packages/x86_64/luci/. ./bin/ipk/
           echo "=== Copied files ==="
-          ls -la ./bin/ipk/ || echo "No files copied"
+          ls -la ./bin/ipk/ | grep parentcontrol
 
       - name: Fix naming
         run: |
@@ -81,10 +74,11 @@ jobs:
           VERSION="${{ needs.preparation.outputs.version }}"
           mkdir -p ./filtered-bin/ipk
           echo "=== Files before filtering ==="
-          ls -la ./bin/ipk/ || echo "No files to filter"
-          cp ./bin/ipk/luci-app-parentcontrol-*.ipk ./filtered-bin/ipk/ 2>/dev/null || echo "No parentcontrol files found"
+          ls -la ./bin/ipk/ | grep parentcontrol
+          cp ./bin/ipk/luci-app-parentcontrol-*.ipk ./filtered-bin/ipk/
+          cp ./bin/ipk/luci-i18n-parentcontrol-*.ipk ./filtered-bin/ipk/
           echo "=== Files after filtering ==="
-          ls -la ./filtered-bin/ipk/ || echo "No filtered files"
+          ls -la ./filtered-bin/ipk/
 
       - name: Remove Docker container
         run: docker rm ipk-builder
