@@ -2,9 +2,17 @@ FROM itdoginfo/openwrt-sdk-ipk:24.10.3
 
 COPY . /builder/
 
-# Копируем готовый пакет в feeds (как у podkop)
+# Проверяем что файлы скопировались
+RUN echo "=== Checking package structure ===" && \
+    find /builder/luci-app-parentcontrol/ -type f && \
+    echo "=== Files count: ===" && \
+    find /builder/luci-app-parentcontrol/files/ -type f | wc -l
+
 COPY ./luci-app-parentcontrol /builder/package/feeds/luci/luci-app-parentcontrol
 
-# Собираем
+# Проверяем после копирования
+RUN echo "=== After copy to feeds ===" && \
+    find /builder/package/feeds/luci/luci-app-parentcontrol/ -type f
+
 RUN make defconfig && \
     make package/luci-app-parentcontrol/compile V=s
