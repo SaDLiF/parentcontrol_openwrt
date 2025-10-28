@@ -19,13 +19,70 @@ nft flush chain inet raw $CHAIN 2>/dev/null
 nft delete chain inet raw $CHAIN 2>/dev/null
 nft add chain inet raw $CHAIN { type filter hook prerouting priority -300 \; }
 
-CURRENT_DAY=$(date +%u)  # 1–7 (1=Mon, 7=Sun)
-CURRENT_TIME=$(date +%H:%M)
-
-log "📅 Текущий день: $CURRENT_DAY, время: $CURRENT_TIME"
-
 i=0
 rule_count=0
+
+# Функция проверки активности правила
+is_rule_active() {
+    local start="$1"
+    local end="$2"
+    local days_list="$3"   # список дней, например: mon tue wed
+    local now_day=$(date +%u)  # 1–7 (1=Mon, 7=Sun)
+    local now_time=$(date +%H:%M)
+
+    local now_min start_min end_min
+    now_min=$(echo "$now_time" | awk -F: '{print $1*60+$2}')
+    start_min=$(echo "$start" | awk -F: '{print $1*60+$2}')
+    end_min=$(echo "$end" | awk -F: '{print $1*60+$2}')
+
+    local today_match=0
+    local yesterday_match=0
+    local day
+
+    # Проверяем, совпадает ли день с днем правила
+    for day in $days_list; do
+        case "$day" in
+            mon) [ "$now_day" -eq 1 ] && today_match=1 ;;
+            tue) [ "$now_day" -eq 2 ] && today_match=1 ;;
+            wed) [ "$now_day" -eq 3 ] && today_match=1 ;;
+            thu) [ "$now_day" -eq 4 ] && today_match=1 ;;
+            fri) [ "$now_day" -eq 5 ] && today_match=1 ;;
+            sat) [ "$now_day" -eq 6 ] && today_match=1 ;;
+            sun) [ "$now_day" -eq 7 ] && today_match=1 ;;
+        esac
+    done
+
+    # Если ночное правило, проверяем предыдущий день
+    if [ "$start_min" -gt "$end_min" ]; then
+        local prev_day=$((now_day - 1))
+        [ "$prev_day" -eq 0 ] && prev_day=7
+        for day in $days_list; do
+            case "$day" in
+                mon) [ "$prev_day" -eq 1 ] && yesterday_match=1 ;;
+                tue) [ "$prev_day" -eq 2 ] && yesterday_match=1 ;;
+                wed) [ "$prev_day" -eq 3 ] && yesterday_match=1 ;;
+                thu) [ "$prev_day" -eq 4 ] && yesterday_match=1 ;;
+                fri) [ "$prev_day" -eq 5 ] && yesterday_match=1 ;;
+                sat) [ "$prev_day" -eq 6 ] && yesterday_match=1 ;;
+                sun) [ "$prev_day" -eq 7 ] && yesterday_match=1 ;;
+            esac
+        done
+    fi
+
+    # Определяем активность
+    if [ "$start_min" -le "$end_min" ]; then
+        # обычное правило
+        [ "$today_match" -eq 1 ] && [ "$now_min" -ge "$start_min" ] && [ "$now_min" -lt "$end_min" ] && return 0
+    else
+        # ночное правило
+        # 1) с текущего дня: start_min–23:59
+        [ "$today_match" -eq 1 ] && [ "$now_min" -ge "$start_min" ] && return 0
+        # 2) с предыдущего дня: 00:00–end_min
+        [ "$yesterday_match" -eq 1 ] && [ "$now_min" -lt "$end_min" ] && return 0
+    fi
+
+    return 1
+}
 
 while uci get $CONFIG.@rule[$i] >/dev/null 2>&1; do
     rule_count=$((rule_count + 1))
@@ -49,78 +106,20 @@ while uci get $CONFIG.@rule[$i] >/dev/null 2>&1; do
         continue
     }
 
+    # Сбор дней
     days_list=""
     j=0
     while day_val=$(uci -q get $CONFIG.$section.days[$j]); do
         days_list="$days_list $day_val"
-        log "📅 Найден день [$j]: $day_val"
         j=$((j + 1))
     done
+    [ -z "$days_list" ] && days_list=$(uci -q get $CONFIG.$section.days)
 
-    [ -z "$days_list" ] && {
-        days_raw=$(uci -q get $CONFIG.$section.days)
-        log "📅 Сырые данные дней: $days_raw"
-        for day in $days_raw; do
-            days_list="$days_list $day"
-        done
-    }
-
-    log "📅 [$name] дни правила:$days_list"
-
-    day_match=0
-    for day in $days_list; do
-        case "$day" in
-            mon) [ "$CURRENT_DAY" -eq 1 ] && day_match=1 ;;
-            tue) [ "$CURRENT_DAY" -eq 2 ] && day_match=1 ;;
-            wed) [ "$CURRENT_DAY" -eq 3 ] && day_match=1 ;;
-            thu) [ "$CURRENT_DAY" -eq 4 ] && day_match=1 ;;
-            fri) [ "$CURRENT_DAY" -eq 5 ] && day_match=1 ;;
-            sat) [ "$CURRENT_DAY" -eq 6 ] && day_match=1 ;;
-            sun) [ "$CURRENT_DAY" -eq 7 ] && day_match=1 ;;
-        esac
-        [ "$day_match" -eq 1 ] && break
-    done
-
-    log "📅 [$name] совпадение дня: $day_match (сегодня день №$CURRENT_DAY)"
-
-    [ "$day_match" -eq 0 ] && {
-        log "⏭️ [$name] день не совпадает"
-        i=$((i + 1))
-        continue
-    }
-
-    log "📅 [$name] день совпадает → OK"
-
-    time_in_range() {
-        local now="$1" from="$2" to="$3"
-        local now_min from_min to_min
-
-        now_min=$(echo "$now" | awk -F: '{ print $1 * 60 + $2 }')
-        from_min=$(echo "$from" | awk -F: '{ print $1 * 60 + $2 }')
-        to_min=$(echo "$to" | awk -F: '{ print $1 * 60 + $2 }')
-
-        log "⏱️ Проверка времени: now=$now_min ($now), from=$from_min ($from), to=$to_min ($to)"
-
-        if [ "$from_min" -le "$to_min" ]; then
-            [ "$now_min" -ge "$from_min" ] && [ "$now_min" -lt "$to_min" ]
-        else
-            [ "$now_min" -ge "$from_min" ] || [ "$now_min" -lt "$to_min" ]
-        fi
-    }
-
-    if ! time_in_range "$CURRENT_TIME" "$start" "$end"; then
-        log "⏭️ [$name] время $CURRENT_TIME вне интервала $start–$end"
+    if ! is_rule_active "$start" "$end" "$days_list"; then
+        log "⏭️ [$name] правило не активно сейчас"
         i=$((i + 1))
         continue
     fi
-
-    log "⏰ [$name] время $CURRENT_TIME ∈ $start–$end → OK"
-
-    [ -z "$mac" ] && [ -z "$ip" ] && {
-        log "⏭️ [$name] ни MAC, ни IP не указаны"
-        i=$((i + 1))
-        continue
-    }
 
     log "✅ [$name] правило активно, применяем..."
 
@@ -140,4 +139,3 @@ done
 
 log "✅ Обработано $rule_count правил. Цепочка nftables:"
 nft list chain inet raw $CHAIN | while read line; do log "$line"; done
-
