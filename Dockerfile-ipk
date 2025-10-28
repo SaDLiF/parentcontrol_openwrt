@@ -1,31 +1,16 @@
 FROM itdoginfo/openwrt-sdk-ipk:24.10.3
 
-# Копируем ВСЮ структуру проекта
+# Копируем проект
 COPY . /builder/
 
-# Создаем структуру пакета
+# Создаем структуру вручную
 RUN mkdir -p /builder/package/parentcontrol && \
-    cp /builder/Makefile /builder/package/parentcontrol/
+    cp /builder/Makefile /builder/package/parentcontrol/ && \
+    mkdir -p /builder/package/parentcontrol/files && \
+    cp -r /builder/files/* /builder/package/parentcontrol/files/ 2>/dev/null || true
 
-# Копируем рекурсивно ВСЕ содержимое files/ включая скрытые файлы
-RUN echo "=== Copying entire files directory ===" && \
-    if [ -d "/builder/files" ]; then \
-        cp -r /builder/files /builder/package/parentcontrol/ && \
-        mv /builder/package/parentcontrol/files /builder/package/parentcontrol/files_temp && \
-        mv /builder/package/parentcontrol/files_temp/* /builder/package/parentcontrol/files/ && \
-        rmdir /builder/package/parentcontrol/files_temp; \
-    else \
-        echo "ERROR: /builder/files directory not found!" && \
-        exit 1; \
-    fi
-
-# Детальная проверка
-RUN echo "=== Verifying copied files ===" && \
-    echo "etc/config:" && ls -la /builder/package/parentcontrol/files/etc/config/ && \
-    echo "etc/init.d:" && ls -la /builder/package/parentcontrol/files/etc/init.d/ && \
-    echo "usr/bin:" && ls -la /builder/package/parentcontrol/files/usr/bin/ && \
-    echo "usr/share:" && find /builder/package/parentcontrol/files/usr/share/ -type f 2>/dev/null | head -10
+# Проверяем
+RUN find /builder/package/parentcontrol/ -type f | head -10
 
 # Собираем
-RUN make defconfig && \
-    make package/parentcontrol/compile V=s
+RUN make defconfig && make package/parentcontrol/compile V=s
