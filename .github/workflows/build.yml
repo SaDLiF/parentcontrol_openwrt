@@ -72,10 +72,15 @@ jobs:
         run: |
           echo "=== Analyzing luci-app-parentcontrol IPK ==="
           tar -tzf ./bin/ipk/luci-app-parentcontrol-*.ipk
-          echo "=== File size breakdown ==="
-          tar -xzf ./bin/ipk/luci-app-parentcontrol-*.ipk --to-stdout data.tar.gz | tar -tzv | head -20
-          echo "=== Control files ==="
-          tar -xzf ./bin/ipk/luci-app-parentcontrol-*.ipk --to-stdout control.tar.gz | tar -tzv
+          echo "=== Extracting and analyzing IPK ==="
+          mkdir -p ./ipk-analysis
+          tar -xzf ./bin/ipk/luci-app-parentcontrol-*.ipk -C ./ipk-analysis/
+          echo "=== Contents of extracted IPK ==="
+          ls -la ./ipk-analysis/
+          echo "=== Data.tar.gz contents ==="
+          tar -tzf ./ipk-analysis/data.tar.gz 2>/dev/null || echo "data.tar.gz is empty or corrupted"
+          echo "=== Control.tar.gz contents ==="
+          tar -tzf ./ipk-analysis/control.tar.gz 2>/dev/null || echo "control.tar.gz is empty or corrupted"
 
       - name: Filter files
         run: |

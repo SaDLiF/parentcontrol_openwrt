@@ -6,13 +6,16 @@ ENV PARENTCONTROL_VERSION=${PARENTCONTROL_VERSION}
 COPY . /builder/
 COPY ./luci-app-parentcontrol /builder/package/feeds/luci/luci-app-parentcontrol
 
-RUN echo "=== Checking file contents ===" && \
-    echo "htdocs files:" && find /builder/package/feeds/luci/luci-app-parentcontrol/htdocs/ -type f -exec ls -la {} \; && \
-    echo "root files:" && find /builder/package/feeds/luci/luci-app-parentcontrol/root/ -type f -exec ls -la {} \; && \
-    echo "File sizes:" && find /builder/package/feeds/luci/luci-app-parentcontrol/ -name "*.js" -o -name "*.json" -o -name "parentalcontrol*" -exec ls -la {} \;
+RUN echo "=== DETAILED FILE CHECK ===" && \
+    echo "=== htdocs contents ===" && \
+    find /builder/package/feeds/luci/luci-app-parentcontrol/htdocs/ -type f -exec echo "FILE: {} - Size: $(stat -c%s {} 2>/dev/null || echo 0) bytes" \; && \
+    echo "=== root contents ===" && \
+    find /builder/package/feeds/luci/luci-app-parentcontrol/root/ -type f -exec echo "FILE: {} - Size: $(stat -c%s {} 2>/dev/null || echo 0) bytes" \; && \
+    echo "=== Makefile content ===" && \
+    cat /builder/package/feeds/luci/luci-app-parentcontrol/Makefile | grep -A 10 "define Package"
 
 RUN make defconfig && \
     make package/luci-app-parentcontrol/compile V=s
 
-RUN echo "=== Build result ===" && \
-    find /builder/bin/packages/ -name "*parentcontrol*" -type f
+RUN echo "=== Build logs for our package ===" && \
+    find /builder/build_dir/ -name "*luci-app-parentcontrol*" -type f -name "*.log" | head -3 | xargs cat 2>/dev/null || echo "No build logs found"
