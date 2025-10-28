@@ -1,0 +1,24 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+PROCD_SERVICE=1
+
+start_service() {
+    procd_open_instance
+    procd_set_param command /bin/sh -c '
+        last_hash=""
+        while true; do
+            current_hash=$(md5sum /etc/config/parentalcontrol 2>/dev/null | awk "{ print \$1 }")
+            if [ "$current_hash" != "$last_hash" ]; then
+                last_hash="$current_hash"
+                logger -t parentalcontrol "Обнаружено изменение конфигурации, применяем правила..."
+                /usr/bin/parentalcontrol-apply
+            fi
+            sleep 5
+        done
+    '
+    procd_set_param respawn
+    procd_close_instance
+}
+

@@ -1,0 +1,12 @@
+{
+  "luci-parentalcontrol": {
+    "description": "Access to parentalcontrol configuration",
+    "read": {
+      "uci": [ "parentalcontrol" ]
+    },
+    "write": {
+      "uci": [ "parentalcontrol" ]
+    }
+  }
+}
+

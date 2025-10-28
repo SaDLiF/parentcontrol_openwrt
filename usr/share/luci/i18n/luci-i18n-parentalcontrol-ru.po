@@ -1,0 +1,11 @@
+msgid ""
+msgstr ""
+"Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Parental Control"
+msgstr "Родительский контроль"
+
+msgid "This is a placeholder for parental control settings."
+msgstr "Здесь будут настройки родительского контроля."
+

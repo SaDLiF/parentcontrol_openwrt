@@ -1,0 +1,19 @@
+
+config parentalcontrol 'config'
+	option enabled '1'
+	option debug '0'
+
+config rule
+	option name 'Test'
+	option enabled '0'
+	option mac '00:00:00:00:E1:AA'
+	option start '00:00'
+	option end '06:00'
+	list days 'mon'
+	list days 'tue'
+	list days 'wed'
+	list days 'thu'
+	list days 'fri'
+	list days 'sat'
+	list days 'sun'
+
