@@ -4,7 +4,6 @@
 'require form';
 'require view';
 
-// Добавьте эту строку для отображения версии
 const VERSION = "__COMPILED_VERSION_VARIABLE__";
 
 const callHostHints = rpc.declare({
@@ -21,81 +20,66 @@ return view.extend({
 
     render: (data) => {
         const hosts = data[1];
+
         const m = new form.Map('parentalcontrol', 
-            _('Родительский контроль %s').format(VERSION),  // Добавьте версию в заголовок
-            _('Настройка правил доступа по MAC/IP')
+            _('Parental Control %s').format(VERSION),
+            _('Configure access rules by MAC/IP')
         );
 
-        const s = m.section(form.GridSection, 'rule', _('Правила'));
+        const s = m.section(form.GridSection, 'rule', _('Rules'));
         s.anonymous = true;
         s.addremove = true;
 
-        // Название
-        let o = s.option(form.Value, 'name', _('Название'));
+        // Name
+        let o = s.option(form.Value, 'name', _('Name'));
         o.rmempty = false;
 
-        // Включено
-        o = s.option(form.Flag, 'enabled', _('Включено'));
+        // Enabled flag with icon
+        o = s.option(form.Flag, 'enabled', _('Enabled'));
         o.default = '1';
         o.rmempty = false;
+        o.cfgvalue = (section_id) => {
+            const val = form.Flag.prototype.cfgvalue(section_id, 'enabled');
+            if (val == '1') {
+                return '<i class="fa fa-check-circle" style="color:green"></i>';
+            }
+            return '<i class="fa fa-times-circle" style="color:red"></i>';
+        };
 
         // MAC
-        o = s.option(form.Value, 'mac', _('MAC-адрес'));
+        o = s.option(form.Value, 'mac', _('MAC Address'));
         o.datatype = 'macaddr';
         Object.keys(hosts).forEach(mac => {
             o.value(mac, '%s (%s)'.format(mac, hosts[mac].name || hosts[mac].ipv4 || ''));
         });
 
         // IP
-        o = s.option(form.Value, 'ip', _('IP-адрес'));
+        o = s.option(form.Value, 'ip', _('IP Address'));
         o.datatype = 'ipaddr';
         Object.keys(hosts).forEach(mac => {
             if (hosts[mac].ipv4)
                 o.value(hosts[mac].ipv4, '%s (%s)'.format(hosts[mac].ipv4, hosts[mac].name || mac));
         });
 
-        // Дни недели
-        o = s.option(form.MultiValue, 'days', _('Дни недели'));
-        o.value('mon', _('Пн'));
-        o.value('tue', _('Вт'));
-        o.value('wed', _('Ср'));
-        o.value('thu', _('Чт'));
-        o.value('fri', _('Пт'));
-        o.value('sat', _('Сб'));
-        o.value('sun', _('Вс'));
+        // Weekdays
+        o = s.option(form.MultiValue, 'days', _('Weekdays'));
+        ['mon','tue','wed','thu','fri','sat','sun'].forEach(d => o.value(d, _(d)));
         o.default = 'mon tue wed thu fri';
         o.rmempty = false;
 
-        // Время начала
-        o = s.option(form.Value, 'start', _('Начало'));
+        // Time start
+        o = s.option(form.Value, 'start', _('Start'));
         o.datatype = 'time';
         o.placeholder = 'HH:MM';
         o.default = '21:00';
         o.rmempty = false;
 
-        // Время окончания
-        o = s.option(form.Value, 'end', _('Окончание'));
+        // Time end
+        o = s.option(form.Value, 'end', _('End'));
         o.datatype = 'time';
         o.placeholder = 'HH:MM';
         o.default = '07:00';
         o.rmempty = false;
-
-        // Добавляем информационную секцию
-        const infoSection = m.section(form.NamedSection, '_info', 'info', _('Информация'));
-        infoSection.anonymous = true;
-
-        const infoOption = infoSection.option(form.DummyValue, '_notice');
-        infoOption.default = _('Правила применяются автоматически при сохранении конфигурации');
-        infoOption.rawhtml = true;
-
-	// Добавляем секцию config с флажком debug
-const configSection = m.section(form.NamedSection, 'config', 'parentalcontrol', _('Общие настройки'));
-configSection.anonymous = true;
-
-const debugFlag = configSection.option(form.Flag, 'debug', _('Включить отладку'));
-debugFlag.default = '1';
-debugFlag.rmempty = false;
-
 
         return m.render();
     }
