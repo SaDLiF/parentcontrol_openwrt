@@ -3,23 +3,29 @@ FROM itdoginfo/openwrt-sdk-ipk:24.10.3
 # Копируем ВСЮ структуру проекта
 COPY . /builder/
 
-# Создаем правильную структуру пакета OpenWrt
-RUN echo "=== Creating package structure ===" && \
-    mkdir -p /builder/package/parentcontrol && \
-    # Копируем Makefile в правильное место
-    cp /builder/Makefile /builder/package/parentcontrol/ && \
-    # Создаем директорию files и копируем туда все файлы из files/
-    mkdir -p /builder/package/parentcontrol/files && \
-    cp -r /builder/files/* /builder/package/parentcontrol/files/ && \
-    # Копируем install.sh если нужно
-    cp /builder/install.sh /builder/package/parentcontrol/files/ 2>/dev/null || true
+# Создаем структуру пакета
+RUN mkdir -p /builder/package/parentcontrol && \
+    cp /builder/Makefile /builder/package/parentcontrol/
 
-# Проверяем созданную структуру
-RUN echo "=== Final structure ===" && \
-    ls -la /builder/package/parentcontrol/ && \
-    echo "=== Files directory ===" && \
-    find /builder/package/parentcontrol/files/ -type f 2>/dev/null | head -20
+# Копируем рекурсивно ВСЕ содержимое files/ включая скрытые файлы
+RUN echo "=== Copying entire files directory ===" && \
+    if [ -d "/builder/files" ]; then \
+        cp -r /builder/files /builder/package/parentcontrol/ && \
+        mv /builder/package/parentcontrol/files /builder/package/parentcontrol/files_temp && \
+        mv /builder/package/parentcontrol/files_temp/* /builder/package/parentcontrol/files/ && \
+        rmdir /builder/package/parentcontrol/files_temp; \
+    else \
+        echo "ERROR: /builder/files directory not found!" && \
+        exit 1; \
+    fi
 
-# Собираем пакет
+# Детальная проверка
+RUN echo "=== Verifying copied files ===" && \
+    echo "etc/config:" && ls -la /builder/package/parentcontrol/files/etc/config/ && \
+    echo "etc/init.d:" && ls -la /builder/package/parentcontrol/files/etc/init.d/ && \
+    echo "usr/bin:" && ls -la /builder/package/parentcontrol/files/usr/bin/ && \
+    echo "usr/share:" && find /builder/package/parentcontrol/files/usr/share/ -type f 2>/dev/null | head -10
+
+# Собираем
 RUN make defconfig && \
     make package/parentcontrol/compile V=s
