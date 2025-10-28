@@ -53,7 +53,9 @@ detect_arch() {
                 arch="unknown"
                 ;;
         esac
-    fi    
+    fi 
+
+    echo "$arch"   
 }
 
 # Get latest release info
