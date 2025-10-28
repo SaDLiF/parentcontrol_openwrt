@@ -2,11 +2,26 @@ FROM itdoginfo/openwrt-sdk-ipk:24.10.3
 
 ARG PARENTCONTROL_VERSION
 
-# Копируем ваши файлы в правильные пути SDK
+# Создаем структуру пакета
+RUN mkdir -p /builder/package/feeds/utilities/parentcontrol
+
+# Копируем файлы
 COPY ./files /builder/package/feeds/utilities/parentcontrol/files
 COPY ./Makefile /builder/package/feeds/utilities/parentcontrol/Makefile
+
+# Отладочная информация
+RUN echo "=== Docker Build Debug ===" && \
+    echo "PARENTCONTROL_VERSION: v${PARENTCONTROL_VERSION}" && \
+    echo "=== Files in package ===" && \
+    find /builder/package/feeds/utilities/parentcontrol -type f && \
+    echo "=== Makefile content ===" && \
+    cat /builder/package/feeds/utilities/parentcontrol/Makefile || echo "No Makefile"
 
 # Собираем пакет
 RUN export PARENTCONTROL_VERSION="v${PARENTCONTROL_VERSION}" && \
     make defconfig && \
-    make package/parentcontrol/compile V=s -j4
+    make package/parentcontrol/compile V=s -j1
+
+# Проверяем результат
+RUN echo "=== Build Result ===" && \
+    find /builder/bin -name "*.ipk" -exec ls -la {} \; || echo "No IPK files found"

@@ -32,6 +32,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Debug - Show repository structure
+        run: |
+          echo "=== Repository Structure ==="
+          find . -name "*.sh" -o -name "*.ipk" -o -name "Makefile" -o -name "Dockerfile*" | head -20
+          echo "=== Files directory ==="
+          ls -la files/ || echo "No files directory"
+          echo "=== Makefile content ==="
+          cat Makefile || echo "No Makefile"
+
       - name: Build IPK using Docker
         uses: docker/build-push-action@v6.18.0
         with:
@@ -40,29 +49,42 @@ jobs:
           tags: parentcontrol:ci-ipk
           build-args: |
             PARENTCONTROL_VERSION=${{ needs.preparation.outputs.version }}
+          push: false
 
-      - name: Create IPK Docker container
-        run: docker create --name ipk-container parentcontrol:ci-ipk
+      - name: Create and inspect Docker container
+        run: |
+          docker create --name ipk-container parentcontrol:ci-ipk
+          echo "=== Container filesystem ==="
+          docker cp ipk-container:/builder/ ./container-fs/
+          find ./container-fs -name "*.ipk" -exec ls -la {} \; || echo "No IPK files in container"
+          echo "=== Package directory in container ==="
+          ls -la ./container-fs/package/feeds/utilities/parentcontrol/ || echo "No package directory"
 
       - name: Copy IPK files from container
         run: |
           mkdir -p ./bin/ipk
-          docker cp ipk-container:/builder/bin/packages/ ./bin/ipk/
+          docker cp ipk-container:/builder/bin/packages/ ./bin/ipk/ || echo "No packages directory"
+          echo "=== Copied files ==="
+          find ./bin/ipk -name "*.ipk" -exec ls -la {} \; || echo "No IPK files copied"
 
       - name: Remove Docker container
         run: docker rm ipk-container
 
       - name: Upload build artifacts
+        if: always()
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: parentcontrol-${{ github.ref_name }}
-          path: ./bin/ipk/packages/*/base/parentcontrol*.ipk
+          name: parentcontrol-debug-${{ github.ref_name }}
+          path: |
+            ./container-fs/
+            ./bin/
           retention-days: 1
 
   release:
     name: Create Release
     runs-on: ubuntu-latest
     needs: build
+    if: needs.build.result == 'success'
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
