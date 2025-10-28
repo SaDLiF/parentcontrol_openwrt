@@ -11,6 +11,9 @@ log() {
 
 log "🔄 Запуск применения правил через nftables (inet raw)..."
 
+# Создать таблицу inet raw, если её нет
+nft list table inet raw >/dev/null 2>&1 || nft add table inet raw
+
 # Сброс цепочки
 nft flush chain inet raw $CHAIN 2>/dev/null
 nft delete chain inet raw $CHAIN 2>/dev/null
