@@ -239,6 +239,11 @@ if [ -x "/etc/init.d/rpcd" ]; then
     /etc/init.d/rpcd restart 2>/dev/null && echo "✓ rpcd restarted" || echo "⚠ rpcd restart failed"
 fi
 
+if [ -x "/etc/init.d/cron" ]; then
+    /etc/init.d/cron restart 2>/dev/null && echo "✓ cron restarted" || echo "⚠ cron restart failed"
+fi
+
+
 # --- 8. Show access hint ---
 echo ""
 echo "🎉 Installation completed (if no errors above)."
