@@ -11,15 +11,14 @@ which wget >/dev/null || { echo "ERROR: wget not found"; exit 1; }
 echo "[2/8] Finding latest IPK packages..."
 API_RESPONSE=$(wget -qO - https://api.github.com/repos/SaDLiF/parentcontrol_openwrt/releases/latest)
 
-# Simple but reliable JSON parsing for OpenWrt
-MAIN_PACKAGE_URL=$(echo "$API_RESPONSE" | sed -e 's/"/ /g' | tr ' ' '\n' | grep "https.*luci-app-parentcontrol.*\.ipk" | head -1)
-TRANSLATION_PACKAGE_URL=$(echo "$API_RESPONSE" | sed -e 's/"/ /g' | tr ' ' '\n' | grep "https.*luci-i18n-parentcontrol-ru.*\.ipk" | head -1)
+# Простой и надежный парсинг JSON
+MAIN_PACKAGE_URL=$(echo "$API_RESPONSE" | grep -o '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*luci-app-parentcontrol[^"]*"' | cut -d'"' -f4)
+TRANSLATION_PACKAGE_URL=$(echo "$API_RESPONSE" | grep -o '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*luci-i18n-parentcontrol-ru[^"]*"' | cut -d'"' -f4)
 
 if [ -z "$MAIN_PACKAGE_URL" ]; then
     echo "ERROR: Could not find main package URL"
-    echo "API Response sample:"
-    echo "$API_RESPONSE" | head -5
-    echo "Please check: https://github.com/SaDLiF/parentcontrol_openwrt/releases"
+    echo "Debug info:"
+    echo "$API_RESPONSE" | grep -o '"browser_download_url"[^}]*' | head -5
     exit 1
 fi
 
