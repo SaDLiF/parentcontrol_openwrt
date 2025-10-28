@@ -11,12 +11,18 @@ which wget >/dev/null || { echo "ERROR: wget not found"; exit 1; }
 echo "[2/8] Finding latest IPK packages..."
 API_RESPONSE=$(wget -qO - https://api.github.com/repos/SaDLiF/parentcontrol_openwrt/releases/latest)
 
-# Find both packages
-MAIN_PACKAGE_URL=$(echo "$API_RESPONSE" | grep "browser_download_url.*luci-app-parentcontrol.*ipk" | head -1 | cut -d'"' -f4)
-TRANSLATION_PACKAGE_URL=$(echo "$API_RESPONSE" | grep "browser_download_url.*luci-i18n-parentcontrol-ru.*ipk" | head -1 | cut -d'"' -f4)
+# Find both packages - исправляем фильтрацию
+MAIN_PACKAGE_URL=$(echo "$API_RESPONSE" | grep "browser_download_url.*luci-app-parentcontrol.*\.ipk" | head -1 | cut -d'"' -f4)
+TRANSLATION_PACKAGE_URL=$(echo "$API_RESPONSE" | grep "browser_download_url.*luci-i18n-parentcontrol-ru.*\.ipk" | head -1 | cut -d'"' -f4)
 
 if [ -z "$MAIN_PACKAGE_URL" ]; then
     echo "ERROR: No main package found in latest release"
+    echo "Trying alternative method..."
+    # Альтернативный способ получить прямые ссылки
+    RELEASE_URL=$(echo "$API_RESPONSE" | grep "browser_download_url" | head -1 | cut -d'"' -f4 | sed 's|/tag/|/expanded_assets/|')
+    if [ -n "$RELEASE_URL" ]; then
+        echo "Please download manually from: $RELEASE_URL"
+    fi
     echo "Available releases: https://github.com/SaDLiF/parentcontrol_openwrt/releases"
     exit 1
 fi
@@ -28,15 +34,31 @@ echo "Main package: $MAIN_PACKAGE_URL"
 echo "[3/8] Downloading IPK packages..."
 cd /tmp
 
+echo "Downloading main package..."
 wget -O luci-app-parentcontrol.ipk "$MAIN_PACKAGE_URL" || {
     echo "ERROR: Main package download failed"
     exit 1
 }
 
+# Проверяем что скачался IPK а не HTML
+if file luci-app-parentcontrol.ipk | grep -q "HTML"; then
+    echo "ERROR: Downloaded HTML instead of IPK file"
+    echo "URL might be incorrect: $MAIN_PACKAGE_URL"
+    rm -f luci-app-parentcontrol.ipk
+    exit 1
+fi
+
 if [ -n "$TRANSLATION_PACKAGE_URL" ]; then
+    echo "Downloading translation package..."
     wget -O luci-i18n-parentcontrol-ru.ipk "$TRANSLATION_PACKAGE_URL" || {
         echo "WARNING: Translation package download failed, continuing with main package only"
     }
+    
+    # Проверяем переводной пакет
+    if [ -f "luci-i18n-parentcontrol-ru.ipk" ] && file luci-i18n-parentcontrol-ru.ipk | grep -q "HTML"; then
+        echo "WARNING: Translation package is HTML, skipping"
+        rm -f luci-i18n-parentcontrol-ru.ipk
+    fi
 fi
 
 # Install packages
@@ -92,5 +114,3 @@ echo "🎉 Installation completed!"
 echo "Parental Control is now installed and running."
 echo "Cron job will apply rules every minute."
 echo "Access via LuCI: Network → Parental Control"
-echo ""
-echo "To uninstall, use: opkg remove luci-app-parentcontrol luci-i18n-parentcontrol-ru"
