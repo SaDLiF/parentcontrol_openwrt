@@ -4,6 +4,9 @@
 'require form';
 'require view';
 
+// Добавьте эту строку для отображения версии
+const VERSION = "__COMPILED_VERSION_VARIABLE__";
+
 const callHostHints = rpc.declare({
     object: 'luci-rpc',
     method: 'getHostHints',
@@ -18,7 +21,10 @@ return view.extend({
 
     render: (data) => {
         const hosts = data[1];
-        const m = new form.Map('parentalcontrol', _('Родительский контроль'), _('Настройка правил доступа по MAC/IP'));
+        const m = new form.Map('parentalcontrol', 
+            _('Родительский контроль v%s').format(VERSION),  // Добавьте версию в заголовок
+            _('Настройка правил доступа по MAC/IP')
+        );
 
         const s = m.section(form.GridSection, 'rule', _('Правила'));
         s.anonymous = true;

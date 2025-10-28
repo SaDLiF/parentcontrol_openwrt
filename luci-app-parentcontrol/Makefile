@@ -2,8 +2,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-parentcontrol
 
-PKG_VERSION:=1.0.0
-PKG_RELEASE:=2
+PKG_VERSION := $(if $(PARENTCONTROL_VERSION),$(PARENTCONTROL_VERSION),0.$(shell date +%d%m%Y))
+
+PKG_RELEASE:=1
 
 LUCI_TITLE:=LuCI Parental Control App
 LUCI_DEPENDS:=+luci-base
@@ -19,37 +20,11 @@ LUCI_LANGUAGES:=en ru
 include $(TOPDIR)/feeds/luci/luci.mk
 
 define Package/$(PKG_NAME)/install
+	$(INSTALL_DIR) $(1)$(HTDOCS)
+	$(CP) $(PKG_BUILD_DIR)/htdocs/* $(1)$(HTDOCS)/
 	$(INSTALL_DIR) $(1)/
-	$(CP) ./files/* $(1)/
-endef
-
-define Package/$(PKG_NAME)/postinst
-#!/bin/sh
-if [ -z "$${IPKG_INSTROOT}" ]; then
-    echo "=== Starting post-installation setup ==="
-    
-    # Make scripts executable
-    [ -f /usr/sbin/parentalcontrol ] && chmod 755 /usr/sbin/parentalcontrol
-    [ -f /usr/bin/parentalcontrol-apply ] && chmod 755 /usr/bin/parentalcontrol-apply
-    [ -f /etc/init.d/parentalcontrol-watch ] && chmod 755 /etc/init.d/parentalcontrol-watch
-    
-    # Set config permissions
-    [ -f /etc/config/parentalcontrol ] && chmod 644 /etc/config/parentalcontrol
-    
-    # Add cron job
-    if [ -f /usr/bin/parentalcontrol-apply ]; then
-        (crontab -l 2>/dev/null | grep -v "/usr/bin/parentalcontrol-apply"; echo "* * * * * /usr/bin/parentalcontrol-apply") | crontab -
-    fi
-    
-    # Enable and start service
-    if [ -f /etc/init.d/parentalcontrol-watch ]; then
-        /etc/init.d/parentalcontrol-watch enable
-        /etc/init.d/parentalcontrol-watch start
-    fi
-    
-    echo "=== Parental Control installation completed! ==="
-fi
-exit 0
+	$(CP) $(PKG_BUILD_DIR)/root/* $(1)/
+	sed -i -e 's/__COMPILED_VERSION_VARIABLE__/$(PKG_VERSION)/g' $(1)$(HTDOCS)/luci-static/resources/view/parentalcontrol/index.js || true
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))

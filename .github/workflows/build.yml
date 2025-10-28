@@ -8,16 +8,32 @@ permissions:
   contents: write
 
 jobs:
+  preparation:
+    name: Setup build version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: version
+        run: |
+          VERSION=$(git describe --tags --exact-match 2>/dev/null | sed 's/^v//' || echo "0.$(date +%d%m%Y)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build IPK package
     runs-on: ubuntu-latest
+    needs: preparation
     
     steps:
       - uses: actions/checkout@v4
       
       - name: Build IPK
         run: |
-          docker build -f Dockerfile-ipk -t parentcontrol-builder .
+          docker build -f Dockerfile-ipk -t parentcontrol-builder \
+            --build-arg PARENTCONTROL_VERSION=${{ needs.preparation.outputs.version }} .
           
       - name: Create Docker container
         run: docker create --name ipk-builder parentcontrol-builder
