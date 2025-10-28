@@ -27,7 +27,7 @@ endef
 
 define Package/parentcontrol/install
 	$(INSTALL_DIR) $(1)
-	$(CP) ./files/* $(1)/
+	$(CP) $(PKG_BUILD_DIR)/files/* $(1)/
 endef
 
 define Package/parentcontrol/postinst
