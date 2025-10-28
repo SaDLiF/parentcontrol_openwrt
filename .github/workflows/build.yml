@@ -2,100 +2,33 @@ name: Build Parental Control
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
 
 permissions:
   contents: write
 
 jobs:
-  preparation:
-    name: Setup build version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v5.0.0
-        with:
-          fetch-depth: 0
-      - id: version
-        run: |
-          VERSION=$(git describe --tags --exact-match 2>/dev/null || echo "0.$(date +%d%m%Y)")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
   build:
-    name: Build parentcontrol package
+    name: Build with Docker
     runs-on: ubuntu-latest
-    needs: preparation
     
     steps:
-      - uses: actions/checkout@v5.0.0
-        with:
-          fetch-depth: 0
-
-      - name: Debug - Show repository structure
+      - uses: actions/checkout@v4
+      
+      - name: Build with Docker and extract IPK
         run: |
-          echo "=== Repository Structure ==="
-          find . -name "*.sh" -o -name "*.ipk" -o -name "Makefile" -o -name "Dockerfile*" | head -20
-          echo "=== Files directory ==="
-          ls -la files/ || echo "No files directory"
-          echo "=== Makefile content ==="
-          cat Makefile || echo "No Makefile"
-
-      - name: Build IPK using Docker
-        uses: docker/build-push-action@v6.18.0
-        with:
-          file: ./Dockerfile-ipk
-          context: .
-          tags: parentcontrol:ci-ipk
-          build-args: |
-            PARENTCONTROL_VERSION=${{ needs.preparation.outputs.version }}
-          push: false
-
-      - name: Create and inspect Docker container
-        run: |
-          docker create --name ipk-container parentcontrol:ci-ipk
-          echo "=== Container filesystem ==="
-          docker cp ipk-container:/builder/ ./container-fs/
-          find ./container-fs -name "*.ipk" -exec ls -la {} \; || echo "No IPK files in container"
-          echo "=== Package directory in container ==="
-          ls -la ./container-fs/package/feeds/utilities/parentcontrol/ || echo "No package directory"
-
-      - name: Copy IPK files from container
-        run: |
-          mkdir -p ./bin/ipk
-          docker cp ipk-container:/builder/bin/packages/ ./bin/ipk/ || echo "No packages directory"
-          echo "=== Copied files ==="
-          find ./bin/ipk -name "*.ipk" -exec ls -la {} \; || echo "No IPK files copied"
-
-      - name: Remove Docker container
-        run: docker rm ipk-container
-
-      - name: Upload build artifacts
-        if: always()
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: parentcontrol-debug-${{ github.ref_name }}
-          path: |
-            ./container-fs/
-            ./bin/
-          retention-days: 1
-
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    needs: build
-    if: needs.build.result == 'success'
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./release-artifacts
-
+          # Собираем в Docker
+          docker build -f Dockerfile-ipk -t parentcontrol-builder .
+          
+          # Создаем контейнер и копируем ТОЛЬКО IPK
+          docker create --name builder parentcontrol-builder
+          docker cp builder:/builder/bin/packages/ ./ipk-files/
+          docker rm builder
+          
+          echo "=== IPK Files ==="
+          find ./ipk-files -name "parentcontrol*.ipk" -exec cp {} . \; -exec ls -la {} \;
+          
       - name: Create Release
-        uses: softprops/action-gh-release@v2.4.0
+        uses: softprops/action-gh-release@v1
         with:
-          files: ./release-artifacts/**/*.ipk
-          draft: false
-          prerelease: false
-          name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          files: parentcontrol*.ipk
