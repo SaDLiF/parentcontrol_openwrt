@@ -7,24 +7,19 @@ echo "[1/8] Checking system..."
 which opkg >/dev/null || { echo "ERROR: opkg not found"; exit 1; }
 which wget >/dev/null || { echo "ERROR: wget not found"; exit 1; }
 
-# Get actual IPK URLs from GitHub API
+# Get latest release info
 echo "[2/8] Finding latest IPK packages..."
 API_RESPONSE=$(wget -qO - https://api.github.com/repos/SaDLiF/parentcontrol_openwrt/releases/latest)
 
-# Parse JSON to get download URLs - более надежный способ
-MAIN_PACKAGE_URL=$(echo "$API_RESPONSE" | grep -o '"browser_download_url"[^}]*"luci-app-parentcontrol[^"]*\.ipk"[^,]*' | head -1 | cut -d'"' -f4)
-TRANSLATION_PACKAGE_URL=$(echo "$API_RESPONSE" | grep -o '"browser_download_url"[^}]*"luci-i18n-parentcontrol-ru[^"]*\.ipk"[^,]*' | head -1 | cut -d'"' -f4)
-
-# Если не нашли через grep, попробуем другой способ
-if [ -z "$MAIN_PACKAGE_URL" ]; then
-    echo "Trying alternative JSON parsing..."
-    MAIN_PACKAGE_URL=$(echo "$API_RESPONSE" | sed -n 's/.*"browser_download_url": "\([^"]*luci-app-parentcontrol[^"]*\.ipk\)".*/\1/p')
-    TRANSLATION_PACKAGE_URL=$(echo "$API_RESPONSE" | sed -n 's/.*"browser_download_url": "\([^"]*luci-i18n-parentcontrol-ru[^"]*\.ipk\)".*/\1/p')
-fi
+# Simple but reliable JSON parsing for OpenWrt
+MAIN_PACKAGE_URL=$(echo "$API_RESPONSE" | sed -e 's/"/ /g' | tr ' ' '\n' | grep "https.*luci-app-parentcontrol.*\.ipk" | head -1)
+TRANSLATION_PACKAGE_URL=$(echo "$API_RESPONSE" | sed -e 's/"/ /g' | tr ' ' '\n' | grep "https.*luci-i18n-parentcontrol-ru.*\.ipk" | head -1)
 
 if [ -z "$MAIN_PACKAGE_URL" ]; then
     echo "ERROR: Could not find main package URL"
-    echo "Available releases: https://github.com/SaDLiF/parentcontrol_openwrt/releases"
+    echo "API Response sample:"
+    echo "$API_RESPONSE" | head -5
+    echo "Please check: https://github.com/SaDLiF/parentcontrol_openwrt/releases"
     exit 1
 fi
 
@@ -43,8 +38,7 @@ wget -O luci-app-parentcontrol.ipk "$MAIN_PACKAGE_URL" || {
 
 # Check if file is HTML (simple check)
 if head -1 luci-app-parentcontrol.ipk | grep -q "<!DOCTYPE HTML\|<html"; then
-    echo "ERROR: Downloaded HTML page instead of IPK file"
-    echo "URL: $MAIN_PACKAGE_URL"
+    echo "ERROR: Downloaded HTML instead of IPK file"
     rm -f luci-app-parentcontrol.ipk
     exit 1
 fi
