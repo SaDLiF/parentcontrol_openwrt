@@ -25,46 +25,30 @@ return view.extend({
             _('Configure access rules by MAC/IP')
         );
 
-        // --- Debug флажок сверху ---
-        const configSection = m.section(form.NamedSection, 'config', 'parentalcontrol', _('Settings'));
-        configSection.anonymous = true;
-        const debugFlag = configSection.option(form.Flag, 'debug', _('Enable debug'));
-        debugFlag.default = '1';
-        debugFlag.rmempty = false;
-
         // --- Основная таблица правил ---
         const s = m.section(form.GridSection, 'rule', _('Rules'));
         s.anonymous = true;
         s.addremove = true;
-
-        // Столбец статуса (отображение только)
-        let status = s.option(form.DummyValue, '_status', _('Status'));
-        status.cfgvalue = (section_id) => {
-            const val = uci.get('parentalcontrol', section_id, 'enabled');
-            return val === '1' ? '✅' : '❌';
-        };
-        status.sortable = false;
-
-        // Название
-        let o = s.option(form.Value, 'name', _('Name'));
-        o.rmempty = false;
+        s.sortable = true;
 
         // Включено (флажок для управления)
-        o = s.option(form.Flag, 'enabled', _('Enabled'));
+        let o = s.option(form.Flag, 'enabled', _('Enabled'));
         o.default = '1';
         o.rmempty = false;
-        o.datatype = 'bool';
-        o.render = () => ''; // Можно скрыть флажок, если не нужен в таблице
+
+        // Название
+        o = s.option(form.Value, 'name', _('Name'));
+        o.rmempty = false;
 
         // MAC
-        o = s.option(form.Value, 'mac', _('MAC'));
+        o = s.option(form.Value, 'mac', _('MAC Address'));
         o.datatype = 'macaddr';
         Object.keys(hosts).forEach(mac => {
             o.value(mac, '%s (%s)'.format(mac, hosts[mac].name || hosts[mac].ipv4 || ''));
         });
 
         // IP
-        o = s.option(form.Value, 'ip', _('IP'));
+        o = s.option(form.Value, 'ip', _('IP Address'));
         o.datatype = 'ipaddr';
         Object.keys(hosts).forEach(mac => {
             if (hosts[mac].ipv4)
@@ -72,7 +56,7 @@ return view.extend({
         });
 
         // Дни недели
-        o = s.option(form.MultiValue, 'days', _('Days'));
+        o = s.option(form.MultiValue, 'days', _('Weekdays'));
         ['mon','tue','wed','thu','fri','sat','sun'].forEach(day => o.value(day, _(day.toUpperCase())));
         o.default = 'mon tue wed thu fri';
         o.rmempty = false;
