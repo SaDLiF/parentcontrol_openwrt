@@ -25,6 +25,13 @@ return view.extend({
             _('Configure access rules by MAC/IP')
         );
 
+        // --- Debug флажок сверху ---
+        const configSection = m.section(form.NamedSection, 'config', 'parentalcontrol', _('Settings'));
+        configSection.anonymous = true;
+        const debugFlag = configSection.option(form.Flag, 'debug', _('Enable debug'));
+        debugFlag.default = '1';
+        debugFlag.rmempty = false;
+
         // --- Основная таблица правил ---
         const s = m.section(form.GridSection, 'rule', _('Rules'));
         s.anonymous = true;
