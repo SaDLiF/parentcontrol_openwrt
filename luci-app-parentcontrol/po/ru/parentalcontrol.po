@@ -48,6 +48,27 @@ msgstr "Сб"
 msgid "sun"
 msgstr "Вс"
 
+msgid "MON"
+msgstr "Пн"
+
+msgid "TUE"
+msgstr "Вт"
+
+msgid "WED"
+msgstr "Ср"
+
+msgid "THU"
+msgstr "Чт"
+
+msgid "FRI"
+msgstr "Пт"
+
+msgid "SAT"
+msgstr "Сб"
+
+msgid "SUN"
+msgstr "Вс"
+
 msgid "Start"
 msgstr "Начало"
 

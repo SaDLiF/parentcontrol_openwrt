@@ -36,18 +36,25 @@ return view.extend({
         const s = m.section(form.GridSection, 'rule', _('Rules'));
         s.anonymous = true;
         s.addremove = true;
-        s.sortable = true;
+
+        // Столбец статуса (отображение только)
+        let status = s.option(form.DummyValue, '_status', _('Status'));
+        status.cfgvalue = (section_id) => {
+            const val = uci.get('parentalcontrol', section_id, 'enabled');
+            return val === '1' ? '✅' : '❌';
+        };
+        status.sortable = false;
 
         // Название
         let o = s.option(form.Value, 'name', _('Name'));
         o.rmempty = false;
 
-        // Статус (включено/выключено)
-        o = s.option(form.DummyValue, 'enabled', _('Status'));
-        o.cfgvalue = (section_id) => {
-            const val = uci.get('parentalcontrol', section_id, 'enabled');
-            return val === '1' ? '✅' : '❌';
-        };
+        // Включено (флажок для управления)
+        o = s.option(form.Flag, 'enabled', _('Enabled'));
+        o.default = '1';
+        o.rmempty = false;
+        o.datatype = 'bool';
+        o.render = () => ''; // Можно скрыть флажок, если не нужен в таблице
 
         // MAC
         o = s.option(form.Value, 'mac', _('MAC'));
