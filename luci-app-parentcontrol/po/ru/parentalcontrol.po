@@ -6,6 +6,50 @@ msgstr ""
 msgid "Parental Control"
 msgstr "Родительский контроль"
 
-msgid "This is a placeholder for parental control settings."
-msgstr "Здесь будут настройки родительского контроля."
+msgid "Configure access rules by MAC/IP"
+msgstr "Настройка правил доступа по MAC/IP"
 
+msgid "Rules"
+msgstr "Правила"
+
+msgid "Name"
+msgstr "Название"
+
+msgid "Enabled"
+msgstr "Включено"
+
+msgid "MAC Address"
+msgstr "MAC-адрес"
+
+msgid "IP Address"
+msgstr "IP-адрес"
+
+msgid "Weekdays"
+msgstr "Дни недели"
+
+msgid "mon"
+msgstr "Пн"
+
+msgid "tue"
+msgstr "Вт"
+
+msgid "wed"
+msgstr "Ср"
+
+msgid "thu"
+msgstr "Чт"
+
+msgid "fri"
+msgstr "Пт"
+
+msgid "sat"
+msgstr "Сб"
+
+msgid "sun"
+msgstr "Вс"
+
+msgid "Start"
+msgstr "Начало"
+
+msgid "End"
+msgstr "Окончание"
